@@ -34,14 +34,14 @@ import {
     DialogClose,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 function HistoryTable({ title, items, columns, onReportClick }: { title: string, items: HistoryItem[], columns: { key: keyof HistoryItem, label: string }[], onReportClick?: (item: HistoryItem) => void }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
+     <AccordionItem value={title}>
+      <AccordionTrigger className="text-lg font-semibold px-6">{title}</AccordionTrigger>
+      <AccordionContent>
+        <div className="px-6 pb-4">
         <Table>
           <TableHeader>
             <TableRow>
@@ -70,8 +70,9 @@ function HistoryTable({ title, items, columns, onReportClick }: { title: string,
             )}
           </TableBody>
         </Table>
-      </CardContent>
-    </Card>
+        </div>
+      </AccordionContent>
+    </AccordionItem>
   );
 }
 
@@ -277,10 +278,13 @@ export default function StudentDetailPage() {
         </CardContent>
       </Card>
       
-      <HistoryTable title="Level Test History" items={student.levelTestHistory} columns={levelTestColumns} />
-      <HistoryTable title="Self-Study History" items={student.selfStudyHistory} columns={selfStudyColumns} onReportClick={handleViewReport} />
-      <HistoryTable title="Role-Play History" items={student.rolePlayHistory} columns={rolePlayColumns} onReportClick={handleViewReport} />
-
+      <Card>
+        <Accordion type="multiple" className="w-full">
+            <HistoryTable title="Level Test History" items={student.levelTestHistory} columns={levelTestColumns} />
+            <HistoryTable title="Self-Study History" items={student.selfStudyHistory} columns={selfStudyColumns} onReportClick={handleViewReport} />
+            <HistoryTable title="Role-Play History" items={student.rolePlayHistory} columns={rolePlayColumns} onReportClick={handleViewReport} />
+        </Accordion>
+      </Card>
 
         <Dialog open={isReportLoading || selectedReport !== null} onOpenChange={(open) => !open && closeDialog()}>
             <DialogContent className="max-w-3xl h-[80vh] flex flex-col">
