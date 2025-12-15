@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { getStudentById, getRolePlayReport } from "@/lib/data";
+import { getStudentById, getRolePlayReport, getSelfStudyReport } from "@/lib/data";
 import type { Student, HistoryItem } from "@/lib/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -82,6 +82,7 @@ export default function StudentDetailPage() {
   const [student, setStudent] = useState<Student | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState<any>(null);
+  const [selectedReportType, setSelectedReportType] = useState<'role-play' | 'self-study' | null>(null);
   const [isReportLoading, setIsReportLoading] = useState(false);
 
   useEffect(() => {
@@ -100,7 +101,14 @@ export default function StudentDetailPage() {
     setSelectedReport(null); // Clear previous report
     
     try {
-      const reportData = await getRolePlayReport(studentId, item.historyId);
+      let reportData;
+      if (item.type === 'Learning') {
+        reportData = await getRolePlayReport(studentId, item.historyId);
+        setSelectedReportType('role-play');
+      } else if (item.type === 'Self-Study') {
+        reportData = await getSelfStudyReport(studentId, item.historyId);
+        setSelectedReportType('self-study');
+      }
       setSelectedReport(reportData);
     } catch(error) {
       console.error("Failed to load report", error)
@@ -108,6 +116,11 @@ export default function StudentDetailPage() {
         setIsReportLoading(false);
     }
   };
+
+  const closeDialog = () => {
+      setSelectedReport(null);
+      setSelectedReportType(null);
+  }
 
   if (loading) {
     return (
@@ -157,6 +170,80 @@ export default function StudentDetailPage() {
     { key: 'activity' as keyof HistoryItem, label: 'Activity' },
   ];
 
+  const selfStudyColumns = [
+    { key: 'date' as keyof HistoryItem, label: 'Date' },
+    { key: 'activity' as keyof HistoryItem, label: 'Activity' },
+    { key: 'score' as keyof HistoryItem, label: 'Score' },
+  ];
+
+  const renderReportContent = () => {
+    if (isReportLoading) {
+      return (
+        <div className="space-y-4 py-4">
+          <Skeleton className="h-8 w-1/3" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-8 w-1/4 mt-4" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+      );
+    }
+
+    if (!selectedReport) {
+      return <p className="text-center text-muted-foreground py-10">No report data to display.</p>;
+    }
+
+    if (selectedReportType === 'role-play') {
+      return (
+        <div className="space-y-4 py-4">
+          <div>
+            <h3 className="font-semibold text-lg mb-2">Evaluation</h3>
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{selectedReport.evaluation}</p>
+          </div>
+          <div>
+            <h3 className="font-semibold text-lg mb-2">Transcript</h3>
+            <div className="space-y-2">
+              {selectedReport.messages?.map((msg: any, index: number) => (
+                <div key={index} className={`text-sm ${msg.role === 'user' ? 'text-blue-600' : 'text-green-600'}`}>
+                  <strong>{msg.role === 'user' ? student.name : 'AI'}:</strong> {msg.content}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
+    if (selectedReportType === 'self-study') {
+      return (
+        <div className="space-y-4 py-4">
+          <div>
+            <h3 className="font-semibold text-lg mb-2">Evaluation</h3>
+            <div className="p-4 border rounded-md bg-secondary/50">
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{selectedReport.evaluation?.feedback}</p>
+                <div className="flex gap-4 mt-4">
+                    <Badge>Score: {selectedReport.evaluation?.score}</Badge>
+                    <Badge variant="outline">CEFR Level: {selectedReport.evaluation?.cefrLevel}</Badge>
+                </div>
+            </div>
+          </div>
+          <div>
+            <h3 className="font-semibold text-lg mb-2">Problem & Answer</h3>
+            <div className="space-y-4">
+                <div>
+                    <h4 className="font-medium">Problem Statement</h4>
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap mt-1 p-2 border rounded-md">{selectedReport.problem?.problem}</p>
+                </div>
+                 <div>
+                    <h4 className="font-medium">Student's Answer</h4>
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap mt-1 p-2 border rounded-md">{selectedReport.userAnswers?.join('\n')}</p>
+                </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  }
 
   return (
     <div className="space-y-6">
@@ -191,45 +278,20 @@ export default function StudentDetailPage() {
       </Card>
       
       <HistoryTable title="Level Test History" items={student.levelTestHistory} columns={levelTestColumns} />
-
+      <HistoryTable title="Self-Study History" items={student.selfStudyHistory} columns={selfStudyColumns} onReportClick={handleViewReport} />
       <HistoryTable title="Role-Play History" items={student.rolePlayHistory} columns={rolePlayColumns} onReportClick={handleViewReport} />
 
-        <Dialog open={isReportLoading || selectedReport !== null} onOpenChange={(open) => !open && setSelectedReport(null)}>
+
+        <Dialog open={isReportLoading || selectedReport !== null} onOpenChange={(open) => !open && closeDialog()}>
             <DialogContent className="max-w-3xl h-[80vh] flex flex-col">
                 <DialogHeader>
-                    <DialogTitle>Role-Play Report</DialogTitle>
+                    <DialogTitle>{selectedReportType === 'role-play' ? 'Role-Play' : 'Self-Study'} Report</DialogTitle>
                     <DialogDescription>
-                        This is the evaluation and transcript from the role-play session.
+                        This is the evaluation and details from the session.
                     </DialogDescription>
                 </DialogHeader>
                 <ScrollArea className="flex-1 pr-4 -mr-4">
-                    {isReportLoading ? (
-                        <div className="space-y-4 py-4">
-                            <Skeleton className="h-8 w-1/3" />
-                            <Skeleton className="h-24 w-full" />
-                            <Skeleton className="h-8 w-1/4 mt-4" />
-                             <Skeleton className="h-32 w-full" />
-                        </div>
-                    ) : selectedReport ? (
-                        <div className="space-y-4 py-4">
-                            <div>
-                                <h3 className="font-semibold text-lg mb-2">Evaluation</h3>
-                                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{selectedReport.evaluation}</p>
-                            </div>
-                            <div>
-                                <h3 className="font-semibold text-lg mb-2">Transcript</h3>
-                                <div className="space-y-2">
-                                    {selectedReport.messages?.map((msg: any, index: number) => (
-                                        <div key={index} className={`text-sm ${msg.role === 'user' ? 'text-blue-600' : 'text-green-600'}`}>
-                                            <strong>{msg.role === 'user' ? student.name : 'AI'}:</strong> {msg.content}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    ) : (
-                       <p className="text-center text-muted-foreground py-10">No report data to display.</p>
-                    )}
+                    {renderReportContent()}
                 </ScrollArea>
                  <DialogClose asChild>
                     <Button type="button" variant="secondary" className="mt-4">

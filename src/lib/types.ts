@@ -10,6 +10,7 @@ export type HistoryItem = {
   score?: string;
   duration?: string;
   historyId?: string;
+  type: 'Level Test' | 'Learning' | 'Self-Study';
 };
 
 export type Student = {
@@ -23,4 +24,5 @@ export type Student = {
   levelTest: LevelTestGrade;
   levelTestHistory: HistoryItem[];
   rolePlayHistory: HistoryItem[];
+  selfStudyHistory: HistoryItem[];
 };

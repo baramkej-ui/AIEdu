@@ -38,17 +38,25 @@ export async function getStudents(): Promise<Student[]> {
 
       const levelTestHistory: HistoryItem[] = [];
       const rolePlayHistory: HistoryItem[] = [];
+      const selfStudyHistory: HistoryItem[] = [];
       const levelTestGrades: { writing?: string, reading?: string } = {};
 
       activitiesSnapshot.docs.forEach(activityDoc => {
         const activityData = activityDoc.data();
-        if (activityData.type === 'Level Test') {
+        const activityType = activityData.type;
+
+        const baseItem = {
+          id: activityDoc.id,
+          date: formatTimestamp(activityData.timestamp, false),
+          activity: activityData.details,
+          historyId: activityData.historyId || activityData.selfStudyHistoryId,
+        };
+
+        if (activityType === 'Level Test') {
             const item: HistoryItem = {
-              id: activityDoc.id,
-              date: formatTimestamp(activityData.timestamp, false),
-              activity: activityData.details,
+              ...baseItem,
+              type: 'Level Test',
               score: activityData.result,
-              historyId: activityData.historyId,
             };
             levelTestHistory.push(item);
             if (activityData.details === 'Writing' && !levelTestGrades.writing) {
@@ -57,14 +65,19 @@ export async function getStudents(): Promise<Student[]> {
             if (activityData.details === 'Reading' && !levelTestGrades.reading) {
                 levelTestGrades.reading = activityData.result;
             }
-        } else if (activityData.type === 'Learning') {
+        } else if (activityType === 'Learning') {
             const item: HistoryItem = {
-              id: activityDoc.id,
-              date: formatTimestamp(activityData.timestamp, false),
-              activity: activityData.details,
-              historyId: activityData.historyId,
+              ...baseItem,
+              type: 'Learning',
             };
             rolePlayHistory.push(item);
+        } else if (activityType === 'Self-Study') {
+            const item: HistoryItem = {
+                ...baseItem,
+                type: 'Self-Study',
+                score: activityData.result,
+            };
+            selfStudyHistory.push(item);
         }
       });
       
@@ -82,6 +95,7 @@ export async function getStudents(): Promise<Student[]> {
         },
         levelTestHistory,
         rolePlayHistory,
+        selfStudyHistory,
       } as Student
     });
     
@@ -108,29 +122,36 @@ export async function getStudentById(studentId: string): Promise<Student | null>
       
       const levelTestHistory: HistoryItem[] = [];
       const rolePlayHistory: HistoryItem[] = [];
+      const selfStudyHistory: HistoryItem[] = [];
       const levelTestGrades: { writing?: string, reading?: string } = {};
 
       activitiesSnapshot.docs.forEach(activityDoc => {
         const activityData = activityDoc.data();
-        const item: HistoryItem = {
+        const activityType = activityData.type;
+        
+        const baseItem = {
           id: activityDoc.id,
           date: formatTimestamp(activityData.timestamp, false),
           activity: activityData.details,
-          score: activityData.result,
           duration: activityData.duration ? `${Math.round(activityData.duration / 60)} min` : undefined,
-          historyId: activityData.historyId,
+          historyId: activityData.historyId || activityData.selfStudyHistoryId,
         };
 
-        if (activityData.type === 'Level Test') {
-          levelTestHistory.push(item);
-          if (activityData.details === 'Writing' && !levelTestGrades.writing) {
-            levelTestGrades.writing = activityData.result;
-          }
-          if (activityData.details === 'Reading' && !levelTestGrades.reading) {
-            levelTestGrades.reading = activityData.result;
-          }
-        } else if (activityData.type === 'Learning') {
-          rolePlayHistory.push(item);
+        if (activityType === 'Level Test') {
+            const item: HistoryItem = { ...baseItem, type: 'Level Test', score: activityData.result };
+            levelTestHistory.push(item);
+            if (activityData.details === 'Writing' && !levelTestGrades.writing) {
+                levelTestGrades.writing = activityData.result;
+            }
+            if (activityData.details === 'Reading' && !levelTestGrades.reading) {
+                levelTestGrades.reading = activityData.result;
+            }
+        } else if (activityType === 'Learning') {
+            const item: HistoryItem = { ...baseItem, type: 'Learning' };
+            rolePlayHistory.push(item);
+        } else if (activityType === 'Self-Study') {
+            const item: HistoryItem = { ...baseItem, type: 'Self-Study', score: activityData.result };
+            selfStudyHistory.push(item);
         }
       });
       
@@ -148,6 +169,7 @@ export async function getStudentById(studentId: string): Promise<Student | null>
         },
         levelTestHistory: levelTestHistory,
         rolePlayHistory: rolePlayHistory,
+        selfStudyHistory: selfStudyHistory,
       };
 
       return studentData;
@@ -175,4 +197,41 @@ export async function getRolePlayReport(studentId: string, historyId: string): P
         console.error("Error fetching role play report: ", error);
         return null;
     }
+}
+
+export async function getSelfStudyReport(studentId: string, historyId: string): Promise<any> {
+    try {
+        const reportRef = doc(db, 'users', studentId, 'selfStudyHistory', historyId);
+        const reportSnap = await getDoc(reportRef);
+        if (reportSnap.exists()) {
+            return reportSnap.data();
+        }
+        return null;
+    } catch (error) {
+        console.error("Error fetching self study report: ", error);
+        return null;
+    }
+}
+
+// Keep the existing function for compatibility if it's used elsewhere
+export async function getTeachingSessions(teacherId: string) {
+  const sessionsRef = collection(db, 'teachingSessions');
+  const q = query(sessionsRef, where('teacherId', '==', teacherId));
+  
+  const querySnapshot = await getDocs(q);
+  const sessions = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+  // Sort by createdAt timestamp in descending order (newest first)
+  sessions.sort((a, b) => {
+    const timeA = a.createdAt?.toMillis() || 0;
+    const timeB = b.createdAt?.toMillis() || 0;
+    return timeB - timeA;
+  });
+
+  return sessions;
+}
+
+export async function saveTeachingSession(sessionData: any) {
+    const sessionsRef = collection(db, 'teachingSessions');
+    await addDoc(sessionsRef, sessionData);
 }
