@@ -45,7 +45,7 @@ export default function DashboardLayout({
   }
 
   const navItems = [
-    { href: "/dashboard", icon: <LayoutDashboard />, label: "Dashboard" },
+    { href: "/dashboard", icon: <LayoutDashboard />, label: "dashboard" },
     { href: "/dashboard/teaching", icon: <BookText />, label: "Teaching" },
   ];
 
