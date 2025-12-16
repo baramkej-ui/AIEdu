@@ -1,10 +1,12 @@
 {
-  "projects": {},
+  "projects": {
+    "default": "studio-608619568-fce2e"
+  },
   "targets": {
     "studio-608619568-fce2e": {
       "hosting": {
-        "teacher": [
-          "aidedu-teacher-site"
+        "teacher-app": [
+          "aiedu-teacher-site"
         ]
       }
     }

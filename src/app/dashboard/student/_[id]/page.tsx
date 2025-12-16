@@ -1,5 +1,11 @@
 "use client";
 
+export const dynamicParams = true;
+export const dynamic = 'force-dynamic';
+
+// 아래부터는 기존에 있던 import 문들이 오면 됩니다.
+
+
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { getStudentById, getRolePlayReport, getSelfStudyReport } from "@/lib/data";
@@ -38,41 +44,41 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 
 function HistoryTable({ title, items, columns, onReportClick }: { title: string, items: HistoryItem[], columns: { key: keyof HistoryItem, label: string }[], onReportClick?: (item: HistoryItem) => void }) {
   return (
-     <AccordionItem value={title}>
-      <AccordionTrigger className="text-lg font-semibold px-6">{title}</AccordionTrigger>
-      <AccordionContent>
-        <div className="px-6 pb-4">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {columns.map(col => <TableHead key={col.key}>{col.label}</TableHead>)}
-               {onReportClick && <TableHead className="text-right">Actions</TableHead>}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {items.length > 0 ? (
-              items.map((item) => (
-                <TableRow key={item.id}>
-                  {columns.map(col => <TableCell key={col.key}>{item[col.key] as string}</TableCell>)}
-                  {onReportClick && (
-                    <TableCell className="text-right">
-                      <Button variant="outline" size="sm" onClick={() => onReportClick(item)}>View Report</Button>
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={columns.length + (onReportClick ? 1 : 0)} className="text-center">
-                  No history found.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-        </div>
-      </AccordionContent>
-    </AccordionItem>
+      <AccordionItem value={title}>
+       <AccordionTrigger className="text-lg font-semibold px-6">{title}</AccordionTrigger>
+       <AccordionContent>
+         <div className="px-6 pb-4">
+         <Table>
+           <TableHeader>
+             <TableRow>
+               {columns.map(col => <TableHead key={col.key}>{col.label}</TableHead>)}
+                {onReportClick && <TableHead className="text-right">Actions</TableHead>}
+             </TableRow>
+           </TableHeader>
+           <TableBody>
+             {items.length > 0 ? (
+               items.map((item) => (
+                 <TableRow key={item.id}>
+                   {columns.map(col => <TableCell key={col.key}>{item[col.key] as string}</TableCell>)}
+                   {onReportClick && (
+                     <TableCell className="text-right">
+                       <Button variant="outline" size="sm" onClick={() => onReportClick(item)}>View Report</Button>
+                     </TableCell>
+                   )}
+                 </TableRow>
+               ))
+             ) : (
+               <TableRow>
+                 <TableCell colSpan={columns.length + (onReportClick ? 1 : 0)} className="text-center">
+                   No history found.
+                 </TableCell>
+               </TableRow>
+             )}
+           </TableBody>
+         </Table>
+         </div>
+       </AccordionContent>
+     </AccordionItem>
   );
 }
 
@@ -234,7 +240,7 @@ export default function StudentDetailPage() {
                     <h4 className="font-medium">Problem Statement</h4>
                     <p className="text-sm text-muted-foreground whitespace-pre-wrap mt-1 p-2 border rounded-md">{selectedReport.problem?.problem}</p>
                 </div>
-                 <div>
+                  <div>
                     <h4 className="font-medium">Student's Answer</h4>
                     <p className="text-sm text-muted-foreground whitespace-pre-wrap mt-1 p-2 border rounded-md">{selectedReport.userAnswers?.join('\n')}</p>
                 </div>
@@ -249,10 +255,10 @@ export default function StudentDetailPage() {
   return (
     <div className="space-y-6">
        <div className="flex items-center gap-4">
-         <Button variant="outline" size="icon" asChild>
+          <Button variant="outline" size="icon" asChild>
             <Link href="/dashboard">
-                <ChevronLeft className="h-4 w-4" />
-                <span className="sr-only">Back</span>
+              <ChevronLeft className="h-4 w-4" />
+              <span className="sr-only">Back</span>
             </Link>
         </Button>
         <h1 className="text-3xl font-bold tracking-tight">{student.name}'s Details</h1>
@@ -297,7 +303,7 @@ export default function StudentDetailPage() {
                 <ScrollArea className="flex-1 pr-4 -mr-4">
                     {renderReportContent()}
                 </ScrollArea>
-                 <DialogClose asChild>
+                  <DialogClose asChild>
                     <Button type="button" variant="secondary" className="mt-4">
                         Close
                     </Button>

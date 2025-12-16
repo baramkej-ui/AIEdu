@@ -1,19 +1,17 @@
 {
-  "hosting": [
-    {
-      "target": "teacher",
-      "public": ".next",
-      "ignore": [
-        "firebase.json",
-        "**/.*",
-        "**/node_modules/**"
-      ],
-      "rewrites": [
-        {
-          "source": "**",
-          "destination": "/index.html"
-        }
-      ]
-    }
-  ]
+  "hosting": {
+    "target": "teacher-app",
+    "public": ".next", 
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/server/app/index.html" 
+      }
+    ]
+  }
 }
