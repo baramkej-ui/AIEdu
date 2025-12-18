@@ -33,7 +33,7 @@ import { ArrowUpDown, MoreHorizontal } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
-type SortKey = keyof Student | "";
+type SortKey = "name" | "levelTest" | "learning";
 
 function StudentTableSkeleton() {
   return (
@@ -75,17 +75,44 @@ export default function DashboardPage() {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
       setSortKey(key);
-      setSortOrder("asc");
+      setSortOrder("desc"); // Default to desc for new columns
     }
   };
 
   const sortedAndFilteredStudents = useMemo(() => {
+    const getLevelTestScore = (student: Student) => {
+      const writingDone = student.levelTest.writing !== 'N/A';
+      const readingDone = student.levelTest.reading !== 'N/A';
+      if (writingDone && readingDone) return 3;
+      if (writingDone) return 2;
+      if (readingDone) return 1;
+      return 0;
+    };
+
     return students
       .filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()))
       .sort((a, b) => {
         if (!sortKey) return 0;
-        const aValue = a[sortKey] || '';
-        const bValue = b[sortKey] || '';
+        
+        let aValue: string | number;
+        let bValue: string | number;
+
+        switch (sortKey) {
+            case 'levelTest':
+                aValue = getLevelTestScore(a);
+                bValue = getLevelTestScore(b);
+                break;
+            case 'learning':
+                aValue = a.rolePlayHistory.length;
+                bValue = b.rolePlayHistory.length;
+                break;
+            case 'name':
+            default:
+                aValue = a.name.toLowerCase();
+                bValue = b.name.toLowerCase();
+                break;
+        }
+        
         if (aValue < bValue) return sortOrder === "asc" ? -1 : 1;
         if (aValue > bValue) return sortOrder === "asc" ? 1 : -1;
         return 0;
@@ -107,6 +134,15 @@ export default function DashboardPage() {
       </Card>
     );
   }
+  
+  const SortableHeader = ({ sortKey: key, children }: { sortKey: SortKey, children: React.ReactNode }) => (
+    <TableHead className="cursor-pointer" onClick={() => handleSort(key)}>
+      <div className="flex items-center">
+        {children}
+        <ArrowUpDown className="ml-2 h-4 w-4" />
+      </div>
+    </TableHead>
+  );
 
   return (
     <div className="space-y-4">
@@ -134,17 +170,9 @@ export default function DashboardPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="cursor-pointer" onClick={() => handleSort("name")}>
-                  <div className="flex items-center">
-                    Student <ArrowUpDown className="ml-2 h-4 w-4" />
-                  </div>
-                </TableHead>
-                <TableHead className="hidden sm:table-cell">
-                    Level-Test
-                </TableHead>
-                <TableHead className="hidden md:table-cell">
-                   Learning
-                </TableHead>
+                <SortableHeader sortKey="name">Student</SortableHeader>
+                <SortableHeader sortKey="levelTest">Level-Test</SortableHeader>
+                <SortableHeader sortKey="learning">Learning</SortableHeader>
                 <TableHead className="text-right">See More</TableHead>
               </TableRow>
             </TableHeader>
