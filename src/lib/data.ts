@@ -1,12 +1,12 @@
 import type { Student, HistoryItem, LevelTestGrade } from "./types";
-import { collection, query, where, getDocs, getFirestore, Timestamp, doc, getDoc, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, getFirestore, Timestamp, doc, getDoc, orderBy, addDoc } from 'firebase/firestore';
 import { app } from './firebase/config';
 
 const db = getFirestore(app);
 
 function formatTimestamp(timestamp: Timestamp | undefined, includeTime: boolean = true): string {
     if (!timestamp) {
-        return 'N/A';
+        return '-';
     }
     const date = timestamp.toDate();
     const options: Intl.DateTimeFormatOptions = {
@@ -213,23 +213,20 @@ export async function getSelfStudyReport(studentId: string, historyId: string): 
     }
 }
 
-// Keep the existing function for compatibility if it's used elsewhere
 export async function getTeachingSessions(teacherId: string) {
   const sessionsRef = collection(db, 'teachingSessions');
-  const q = query(sessionsRef, where('teacherId', '==', teacherId));
+  const q = query(
+    sessionsRef, 
+    where('teacherId', '==', teacherId),
+    orderBy('createdAt', 'desc')
+  );
   
   const querySnapshot = await getDocs(q);
   const sessions = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-  // Sort by createdAt timestamp in descending order (newest first)
-  sessions.sort((a, b) => {
-    const timeA = a.createdAt?.toMillis() || 0;
-    const timeB = b.createdAt?.toMillis() || 0;
-    return timeB - timeA;
-  });
-
+  
   return sessions;
 }
+
 
 export async function saveTeachingSession(sessionData: any) {
     const sessionsRef = collection(db, 'teachingSessions');

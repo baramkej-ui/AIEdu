@@ -69,7 +69,7 @@ export default function LoginPage() {
         const userRef = doc(db, "users", user.uid);
         const userSnap = await getDoc(userRef);
 
-        if (userSnap.exists() && userSnap.data().role === 'student') {
+        if (userSnap.exists()) {
           await setDoc(userRef, {
             lastLogin: serverTimestamp(),
             totalLogins: increment(1)

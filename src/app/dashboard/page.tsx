@@ -33,7 +33,7 @@ import { ArrowUpDown, MoreHorizontal } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
-type SortKey = "name" | "levelTest" | "learning";
+type SortKey = "name" | "levelTest" | "learning" | "login";
 
 function StudentTableSkeleton() {
   return (
@@ -106,6 +106,10 @@ export default function DashboardPage() {
                 aValue = a.rolePlayHistory.length;
                 bValue = b.rolePlayHistory.length;
                 break;
+            case 'login':
+                aValue = a.lastLogin === '-' ? 0 : new Date(a.lastLogin).getTime();
+                bValue = b.lastLogin === '-' ? 0 : new Date(b.lastLogin).getTime();
+                break;
             case 'name':
             default:
                 aValue = a.name.toLowerCase();
@@ -173,6 +177,7 @@ export default function DashboardPage() {
                 <SortableHeader sortKey="name">Student</SortableHeader>
                 <SortableHeader sortKey="levelTest">Level-Test</SortableHeader>
                 <SortableHeader sortKey="learning">Learning</SortableHeader>
+                <SortableHeader sortKey="login">LogIn</SortableHeader>
                 <TableHead className="text-right">See More</TableHead>
               </TableRow>
             </TableHeader>
@@ -196,6 +201,9 @@ export default function DashboardPage() {
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
                     {student.rolePlayHistory.length} sessions
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    {student.lastLogin}
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
