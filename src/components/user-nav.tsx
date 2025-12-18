@@ -36,7 +36,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { signOut, updateProfile } from "firebase/auth";
+import { signOut, updateProfile, updatePassword } from "firebase/auth";
 import { auth, db } from "@/lib/firebase/config";
 import { doc, updateDoc } from "firebase/firestore";
 import { getLoginHistory } from "@/lib/data";
@@ -48,7 +48,19 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const profileFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
+  password: z.string().optional(),
+  confirmPassword: z.string().optional(),
+}).refine(data => {
+    if (data.password && data.password.length < 6) return false;
+    return true;
+}, {
+    message: "Password must be at least 6 characters.",
+    path: ["password"],
+}).refine(data => data.password === data.confirmPassword, {
+    message: "Passwords don't match.",
+    path: ["confirmPassword"],
 });
+
 
 type DialogState = 'closed' | 'profile' | 'loginHistory';
 
@@ -66,8 +78,21 @@ export function UserNav() {
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
       name: user?.displayName || "",
+      password: "",
+      confirmPassword: "",
     },
   });
+  
+  useEffect(() => {
+    if (user) {
+        form.reset({
+            name: user.displayName || "",
+            password: "",
+            confirmPassword: "",
+        })
+    }
+  }, [user, form]);
+
 
   useEffect(() => {
     if (dialogOpen === 'loginHistory' && user) {
@@ -90,28 +115,42 @@ export function UserNav() {
   const handleProfileUpdate = async (values: z.infer<typeof profileFormSchema>) => {
     if (!user) return;
     setIsUpdating(true);
+
     try {
-        await updateProfile(user, {
-            displayName: values.name,
-        });
+        // Update display name if it has changed
+        if (values.name !== user.displayName) {
+            await updateProfile(user, { displayName: values.name });
+            const userDocRef = doc(db, "users", user.uid);
+            await updateDoc(userDocRef, { name: values.name });
+            toast({
+                title: "Success",
+                description: "Your name has been updated.",
+            });
+        }
 
-        const userDocRef = doc(db, "users", user.uid);
-        await updateDoc(userDocRef, {
-            name: values.name
-        });
-
-        toast({
-            title: "Success",
-            description: "Your profile has been updated.",
+        // Update password if it's provided
+        if (values.password) {
+            await updatePassword(user, values.password);
+            toast({
+                title: "Success",
+                description: "Your password has been updated.",
+            });
+        }
+        
+        form.reset({
+            name: values.name,
+            password: "",
+            confirmPassword: "",
         });
         setDialogOpen('closed');
         router.refresh(); 
-    } catch (error) {
+
+    } catch (error: any) {
         console.error("Error updating profile: ", error);
         toast({
             variant: "destructive",
             title: "Update Failed",
-            description: "Could not update your profile. Please try again.",
+            description: `Could not update your profile. ${error.message}`,
         });
     } finally {
         setIsUpdating(false);
@@ -189,17 +228,43 @@ export function UserNav() {
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(handleProfileUpdate)} className="space-y-4">
                     <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Name</FormLabel>
-                        <FormControl>
-                            <Input placeholder="Your name" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
+                        control={form.control}
+                        name="name"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Name</FormLabel>
+                            <FormControl>
+                                <Input placeholder="Your name" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                     <FormField
+                        control={form.control}
+                        name="password"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>New Password</FormLabel>
+                            <FormControl>
+                                <Input type="password" placeholder="Leave blank to keep current password" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                     <FormField
+                        control={form.control}
+                        name="confirmPassword"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Confirm New Password</FormLabel>
+                            <FormControl>
+                                <Input type="password" placeholder="Confirm your new password" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
                     />
                     <DialogFooter>
                         <Button type="submit" disabled={isUpdating}>
