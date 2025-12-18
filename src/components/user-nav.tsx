@@ -82,17 +82,6 @@ export function UserNav() {
       confirmPassword: "",
     },
   });
-  
-  useEffect(() => {
-    if (user) {
-        form.reset({
-            name: user.displayName || "",
-            password: "",
-            confirmPassword: "",
-        })
-    }
-  }, [user, form]);
-
 
   useEffect(() => {
     if (dialogOpen === 'loginHistory' && user) {
@@ -157,6 +146,15 @@ export function UserNav() {
     }
   }
 
+  const handleProfileOpen = () => {
+    form.reset({
+        name: user?.displayName || "",
+        password: "",
+        confirmPassword: "",
+    });
+    setDialogOpen('profile');
+  };
+
   const getInitials = (email: string | null | undefined) => {
     if (!email) return "U";
     const name = user?.displayName;
@@ -198,7 +196,7 @@ export function UserNav() {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-                <DropdownMenuItem onSelect={() => setDialogOpen('profile')}>
+                <DropdownMenuItem onSelect={handleProfileOpen}>
                     <User className="mr-2 h-4 w-4" />
                     <span>Profile</span>
                 </DropdownMenuItem>
