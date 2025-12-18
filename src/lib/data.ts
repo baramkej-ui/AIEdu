@@ -1,3 +1,4 @@
+
 import type { Student, HistoryItem, LevelTestGrade, LoginRecord } from "./types";
 import { collection, query, where, getDocs, getFirestore, Timestamp, doc, getDoc, orderBy, addDoc, setDoc, serverTimestamp, increment } from 'firebase/firestore';
 import { app } from './firebase/config';
@@ -214,17 +215,22 @@ export async function getSelfStudyReport(studentId: string, historyId: string): 
 }
 
 export async function getTeachingSessions(teacherId: string) {
-  const sessionsRef = collection(db, 'teachingSessions');
-  const q = query(
-    sessionsRef, 
-    where('teacherId', '==', teacherId),
-    orderBy('createdAt', 'desc')
-  );
-  
-  const querySnapshot = await getDocs(q);
-  const sessions = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  
-  return sessions;
+    if (!teacherId) return [];
+    try {
+        const sessionsRef = collection(db, 'teachingSessions');
+        const q = query(
+            sessionsRef, 
+            where('teacherId', '==', teacherId),
+            orderBy('createdAt', 'desc')
+        );
+        
+        const querySnapshot = await getDocs(q);
+        const sessions = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        return sessions;
+    } catch (error) {
+        console.error("Error fetching teaching sessions:", error);
+        return [];
+    }
 }
 
 
@@ -239,18 +245,18 @@ export async function saveTeachingSession(sessionData: any) {
 
 export async function saveLoginHistory(userId: string) {
   const userRef = doc(db, 'users', userId);
-  const loginHistoryRef = collection(userRef, 'loginHistory');
-
-  // Add a new login record
-  await addDoc(loginHistoryRef, {
-    timestamp: serverTimestamp()
-  });
-
+  
   // Update last login and total logins on the user document
   await setDoc(userRef, {
     lastLogin: serverTimestamp(),
     totalLogins: increment(1)
   }, { merge: true });
+
+  // Add a new login record to the subcollection
+  const loginHistoryRef = collection(userRef, 'loginHistory');
+  await addDoc(loginHistoryRef, {
+    timestamp: serverTimestamp()
+  });
 }
 
 export async function getLoginHistory(userId: string): Promise<LoginRecord[]> {
@@ -271,3 +277,5 @@ export async function getLoginHistory(userId: string): Promise<LoginRecord[]> {
     return [];
   }
 }
+
+    
