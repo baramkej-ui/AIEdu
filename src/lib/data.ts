@@ -1,5 +1,5 @@
-import type { Student, HistoryItem, LevelTestGrade } from "./types";
-import { collection, query, where, getDocs, getFirestore, Timestamp, doc, getDoc, orderBy, addDoc } from 'firebase/firestore';
+import type { Student, HistoryItem, LevelTestGrade, LoginRecord } from "./types";
+import { collection, query, where, getDocs, getFirestore, Timestamp, doc, getDoc, orderBy, addDoc, setDoc, serverTimestamp, increment } from 'firebase/firestore';
 import { app } from './firebase/config';
 
 const db = getFirestore(app);
@@ -229,6 +229,45 @@ export async function getTeachingSessions(teacherId: string) {
 
 
 export async function saveTeachingSession(sessionData: any) {
-    const sessionsRef = collection(db, 'teachingSessions');
-    await addDoc(sessionsRef, sessionData);
+  const sessionWithTimestamp = {
+    ...sessionData,
+    createdAt: serverTimestamp()
+  };
+  const sessionsRef = collection(db, 'teachingSessions');
+  await addDoc(sessionsRef, sessionWithTimestamp);
+}
+
+export async function saveLoginHistory(userId: string) {
+  const userRef = doc(db, 'users', userId);
+  const loginHistoryRef = collection(userRef, 'loginHistory');
+
+  // Add a new login record
+  await addDoc(loginHistoryRef, {
+    timestamp: serverTimestamp()
+  });
+
+  // Update last login and total logins on the user document
+  await setDoc(userRef, {
+    lastLogin: serverTimestamp(),
+    totalLogins: increment(1)
+  }, { merge: true });
+}
+
+export async function getLoginHistory(userId: string): Promise<LoginRecord[]> {
+  try {
+    const loginHistoryRef = collection(db, 'users', userId, 'loginHistory');
+    const q = query(loginHistoryRef, orderBy('timestamp', 'desc'));
+    const querySnapshot = await getDocs(q);
+
+    return querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        timestamp: data.timestamp,
+      };
+    });
+  } catch (error) {
+    console.error("Error fetching login history: ", error);
+    return [];
+  }
 }

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { format } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,19 +39,28 @@ import { useToast } from "@/hooks/use-toast";
 import { signOut, updateProfile } from "firebase/auth";
 import { auth, db } from "@/lib/firebase/config";
 import { doc, updateDoc } from "firebase/firestore";
+import { getLoginHistory } from "@/lib/data";
+import type { LoginRecord } from "@/lib/types";
 import { useRouter } from "next/navigation";
-import { LogOut, User, Loader } from "lucide-react";
+import { LogOut, User, Loader, History, DoorOpen } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const profileFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
 });
 
+type DialogState = 'closed' | 'profile' | 'loginHistory';
+
 export function UserNav() {
   const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState<DialogState>('closed');
+  const [loginHistory, setLoginHistory] = useState<LoginRecord[]>([]);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+
 
   const form = useForm<z.infer<typeof profileFormSchema>>({
     resolver: zodResolver(profileFormSchema),
@@ -58,6 +68,19 @@ export function UserNav() {
       name: user?.displayName || "",
     },
   });
+
+  useEffect(() => {
+    if (dialogOpen === 'loginHistory' && user) {
+        setIsHistoryLoading(true);
+        getLoginHistory(user.uid)
+            .then(history => {
+                setLoginHistory(history);
+            })
+            .finally(() => {
+                setIsHistoryLoading(false);
+            });
+    }
+  }, [dialogOpen, user]);
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -81,8 +104,7 @@ export function UserNav() {
             title: "Success",
             description: "Your profile has been updated.",
         });
-        setIsProfileDialogOpen(false);
-        // Force a re-render or state update if needed to show new name immediately
+        setDialogOpen('closed');
         router.refresh(); 
     } catch (error) {
         console.error("Error updating profile: ", error);
@@ -95,7 +117,6 @@ export function UserNav() {
         setIsUpdating(false);
     }
   }
-
 
   const getInitials = (email: string | null | undefined) => {
     if (!email) return "U";
@@ -111,7 +132,7 @@ export function UserNav() {
   };
 
   return (
-    <Dialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen}>
+    <>
       <div className="flex items-center gap-2">
         <span className="hidden text-sm font-medium sm:block">
           {user?.displayName || "Teacher"}
@@ -138,12 +159,14 @@ export function UserNav() {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-                <DialogTrigger asChild>
-                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                        <User className="mr-2 h-4 w-4" />
-                        <span>Profile</span>
-                    </DropdownMenuItem>
-                </DialogTrigger>
+                <DropdownMenuItem onSelect={() => setDialogOpen('profile')}>
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Profile</span>
+                </DropdownMenuItem>
+                 <DropdownMenuItem onSelect={() => setDialogOpen('loginHistory')}>
+                    <History className="mr-2 h-4 w-4" />
+                    <span>LogIn Record</span>
+                </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout}>
@@ -153,37 +176,76 @@ export function UserNav() {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Edit Profile</DialogTitle>
-          <DialogDescription>
-            Make changes to your profile here. Click save when you're done.
-          </DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleProfileUpdate)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Your name" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <DialogFooter>
-                    <Button type="submit" disabled={isUpdating}>
-                        {isUpdating && <Loader className="mr-2 h-4 w-4 animate-spin" />}
-                        Save changes
-                    </Button>
-                </DialogFooter>
-            </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+      
+      {/* Profile Edit Dialog */}
+      <Dialog open={dialogOpen === 'profile'} onOpenChange={(isOpen) => !isOpen && setDialogOpen('closed')}>
+         <DialogContent>
+            <DialogHeader>
+            <DialogTitle>Edit Profile</DialogTitle>
+            <DialogDescription>
+                Make changes to your profile here. Click save when you're done.
+            </DialogDescription>
+            </DialogHeader>
+            <Form {...form}>
+                <form onSubmit={form.handleSubmit(handleProfileUpdate)} className="space-y-4">
+                    <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Name</FormLabel>
+                        <FormControl>
+                            <Input placeholder="Your name" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <DialogFooter>
+                        <Button type="submit" disabled={isUpdating}>
+                            {isUpdating && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+                            Save changes
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Login History Dialog */}
+      <Dialog open={dialogOpen === 'loginHistory'} onOpenChange={(isOpen) => !isOpen && setDialogOpen('closed')}>
+        <DialogContent className="max-w-md">
+            <DialogHeader>
+                <DialogTitle>Login History</DialogTitle>
+                <DialogDescription>
+                    Here is a list of your recent login times.
+                </DialogDescription>
+            </DialogHeader>
+            <ScrollArea className="h-72">
+                <div className="p-1">
+                {isHistoryLoading ? (
+                     <div className="space-y-3">
+                        <Skeleton className="h-5 w-4/5" />
+                        <Skeleton className="h-5 w-4/5" />
+                        <Skeleton className="h-5 w-4/5" />
+                        <Skeleton className="h-5 w-4/5" />
+                    </div>
+                ) : loginHistory.length > 0 ? (
+                    <ul className="space-y-3">
+                        {loginHistory.map((record) => (
+                           <li key={record.id} className="flex items-center gap-3 text-sm text-muted-foreground">
+                                <DoorOpen className="h-4 w-4" />
+                                <span>{format(record.timestamp.toDate(), "PPP p")}</span>
+                           </li>
+                        ))}
+                    </ul>
+                ) : (
+                    <p className="text-center text-sm text-muted-foreground py-10">No login history found.</p>
+                )}
+                </div>
+            </ScrollArea>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

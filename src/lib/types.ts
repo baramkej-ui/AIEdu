@@ -1,3 +1,5 @@
+import type { Timestamp } from "firebase/firestore";
+
 export type LevelTestGrade = {
   writing: string;
   reading: string;
@@ -25,4 +27,9 @@ export type Student = {
   levelTestHistory: HistoryItem[];
   rolePlayHistory: HistoryItem[];
   selfStudyHistory: HistoryItem[];
+};
+
+export type LoginRecord = {
+  id: string;
+  timestamp: Timestamp;
 };

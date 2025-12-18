@@ -21,8 +21,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth, db } from "@/lib/firebase/config";
-import { doc, getDoc, setDoc, serverTimestamp, increment } from "firebase/firestore";
+import { auth } from "@/lib/firebase/config";
+import { saveLoginHistory } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
@@ -66,15 +66,7 @@ export default function LoginPage() {
       const user = userCredential.user;
 
       if (user) {
-        const userRef = doc(db, "users", user.uid);
-        const userSnap = await getDoc(userRef);
-
-        if (userSnap.exists()) {
-          await setDoc(userRef, {
-            lastLogin: serverTimestamp(),
-            totalLogins: increment(1)
-          }, { merge: true });
-        }
+        await saveLoginHistory(user.uid);
       }
 
       toast({
